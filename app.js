@@ -5,7 +5,7 @@ const TAB_H = 56;
 
 let user = null, devices = [], selectedId = null, channel = null, tab = 'devices', loadError = null;
 let myId = localStorage.getItem('findmy_device_id');
-let map, tiles, markers = {}, fitted = false, hereMarker = null, trailLine = null;
+let map, markers = {}, fitted = false, hereMarker = null, hasTrail = false;
 let watchId = null, lastPush = 0;
 let audioCtx = null, ringTimer = null;
 let lastRing = localStorage.getItem('findmy_last_ring') || '';
@@ -85,48 +85,55 @@ $('btnSignUp').onclick = () => authCall('up');
 $('loginForm').onsubmit = (e) => { e.preventDefault(); authCall('in'); };
 
 // ---------- map ----------
-// CARTO tiles now require an API key; OSM's public tiles don't. Dark mode re-colours them with CSS.
-const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Vector map (MapLibre + OpenFreeMap, no API key). Dark mode re-colours the light style with CSS.
 function initMap() {
-  if (map) { setTimeout(() => map.invalidateSize(), 50); return; }
-  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([25.04, 121.56], 12);
-  L.control.attribution({ position: 'topleft', prefix: false }).addTo(map);
-  tiles = L.tileLayer(TILE_URL, {
-    maxZoom: 19, attribution: '© OpenStreetMap',
-  }).addTo(map);
+  if (map) { setTimeout(() => map.resize(), 50); return; }
+  map = new maplibregl.Map({
+    container: 'map', style: 'https://tiles.openfreemap.org/styles/positron',
+    center: [121.56, 25.04], zoom: 11, attributionControl: false, dragRotate: false, pitchWithRotate: false,
+  });
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-left');
+  map.touchZoomRotate.disableRotation();
   map.on('click', () => { if (selectedId) back(); });
 }
 $('btnLocate').onclick = () => {
   navigator.geolocation.getCurrentPosition((p) => {
-    const ll = [p.coords.latitude, p.coords.longitude];
-    if (!hereMarker) hereMarker = L.marker(ll, { icon: L.divIcon({ className: '', html: '<div class="here"></div>', iconSize: [18, 18] }), interactive: false }).addTo(map);
-    else hereMarker.setLatLng(ll);
-    map.setView(ll, 16);
+    const ll = [p.coords.longitude, p.coords.latitude];
+    if (!hereMarker) hereMarker = new maplibregl.Marker({ element: el('div', { className: 'here' }), anchor: 'center' }).setLngLat(ll).addTo(map);
+    else hereMarker.setLngLat(ll);
+    map.flyTo({ center: ll, zoom: 16 });
   }, (e) => ask({ title: '無法取得位置', msg: e.message, ok: '好' }), { enableHighAccuracy: true, timeout: 15000 });
 };
 
-function pinHtml(d) {
-  const cls = ['pin', d.id === selectedId ? 'sel' : '', d.lost_mode ? 'lost' : '', d.id === myId ? 'me' : ''].join(' ');
-  const wrap = el('div', { className: cls }, el('div', { className: 'dot', textContent: icon(d) }), el('div', { className: 'lbl', textContent: d.name }));
-  return wrap.outerHTML;
+function pinClass(d) {
+  return ['pin', d.id === selectedId ? 'sel' : '', d.lost_mode ? 'lost' : '', d.id === myId ? 'me' : ''].join(' ').trim();
+}
+function makePin(d) {
+  const wrap = el('div', { className: pinClass(d) }, el('div', { className: 'dot', textContent: icon(d) }), el('div', { className: 'lbl', textContent: d.name }));
+  wrap.addEventListener('click', (e) => { e.stopPropagation(); select(d.id); });
+  return wrap;
 }
 function syncMarkers() {
   const withPos = devices.filter((d) => d.lat != null);
   const ids = new Set(withPos.map((d) => d.id));
-  Object.keys(markers).forEach((id) => { if (!ids.has(id)) { map.removeLayer(markers[id]); delete markers[id]; } });
+  Object.keys(markers).forEach((id) => { if (!ids.has(id)) { markers[id].remove(); delete markers[id]; } });
   withPos.forEach((d) => {
-    const ll = [d.lat, d.lng], html = pinHtml(d);
+    const ll = [d.lng, d.lat];
     if (!markers[d.id]) {
-      markers[d.id] = L.marker(ll, { icon: L.divIcon({ className: '', html, iconSize: [0, 0] }) }).addTo(map);
-      markers[d.id].on('click', (e) => { L.DomEvent.stopPropagation(e); select(d.id); });
-      markers[d.id]._html = html;
+      markers[d.id] = new maplibregl.Marker({ element: makePin(d), anchor: 'center' }).setLngLat(ll).addTo(map);
     } else {
-      markers[d.id].setLatLng(ll);
-      if (markers[d.id]._html !== html) { markers[d.id].setIcon(L.divIcon({ className: '', html, iconSize: [0, 0] })); markers[d.id]._html = html; }
+      const mk = markers[d.id], node = mk.getElement();
+      mk.setLngLat(ll);
+      node.classList.remove('sel', 'lost', 'me');
+      pinClass(d).split(' ').slice(1).forEach((c) => node.classList.add(c));
+      node.querySelector('.dot').textContent = icon(d);
+      node.querySelector('.lbl').textContent = d.name;
     }
   });
   if (!fitted && withPos.length) {
-    map.fitBounds(L.latLngBounds(withPos.map((d) => [d.lat, d.lng])), { maxZoom: 16, padding: [60, 60] });
+    const bb = new maplibregl.LngLatBounds();
+    withPos.forEach((d) => bb.extend([d.lng, d.lat]));
+    map.fitBounds(bb, { maxZoom: 16, padding: 80, duration: 0 });
     fitted = true;
   }
 }
@@ -267,13 +274,19 @@ function select(id) {
   selectedId = id;
   tab = 'devices';
   const d = devices.find((x) => x.id === id);
-  if (d && d.lat != null) map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15), { animate: true });
+  if (d && d.lat != null) map.flyTo({ center: [d.lng, d.lat], zoom: Math.max(map.getZoom(), 15) });
   render();
   setH(detents()[1]);
 }
 function clearSelection() {
   selectedId = null;
-  if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+  clearTrail();
+}
+function clearTrail() {
+  if (!hasTrail) return;
+  if (map.getLayer('trail')) map.removeLayer('trail');
+  if (map.getSource('trail')) map.removeSource('trail');
+  hasTrail = false;
 }
 function back() { clearSelection(); render(); setH(detents()[0]); }
 
@@ -281,10 +294,15 @@ async function showTrail(id) {
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { data, error } = await sb.from('device_locations').select('lat,lng').eq('device_id', id).gte('created_at', since).order('created_at');
   if (error) return ask({ title: '失敗', msg: error.message });
-  if (trailLine) map.removeLayer(trailLine);
+  clearTrail();
   if (data.length < 2) return ask({ title: '沒有軌跡', msg: '過去 24 小時的位置紀錄不足。' });
-  trailLine = L.polyline(data.map((r) => [r.lat, r.lng]), { weight: 5, color: '#007aff', opacity: .85 }).addTo(map);
-  map.fitBounds(trailLine.getBounds(), { padding: [60, 60] });
+  const coords = data.map((r) => [r.lng, r.lat]);
+  map.addSource('trail', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
+  map.addLayer({ id: 'trail', type: 'line', source: 'trail', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#007aff', 'line-width': 5, 'line-opacity': 0.85 } });
+  hasTrail = true;
+  const bb = new maplibregl.LngLatBounds();
+  coords.forEach((c) => bb.extend(c));
+  map.fitBounds(bb, { padding: 80, maxZoom: 17 });
   setH(detents()[0]);
 }
 

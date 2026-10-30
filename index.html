@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f2f2f7">
 <title>Find My</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root{
   --bg:#f2f2f7; --card:#fff; --fg:#000; --mute:#8e8e93; --acc:#007aff; --green:#34c759; --red:#ff3b30;
@@ -37,16 +37,16 @@ button{border:0;background:none;cursor:pointer;padding:0}
 
 /* map */
 #map{position:fixed;inset:0;background:var(--bg)}
-.leaflet-container{font:inherit}
-@media (prefers-color-scheme:dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.7)}}
-.leaflet-control-attribution{font-size:9px;background:transparent!important;opacity:.6}
-.pin{display:grid;justify-items:center;transform:translate(-50%,-100%);width:max-content;pointer-events:auto}
+@media (prefers-color-scheme:dark){#map .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.95)}}
+.maplibregl-ctrl-attrib{font-size:10px;background:transparent!important;opacity:.6}
+.maplibregl-ctrl-attrib a{color:inherit}
+.pin{position:relative;width:40px;height:40px;cursor:pointer}
 .pin .dot{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:21px;
   border:3px solid var(--acc);box-shadow:0 3px 10px rgba(0,0,0,.3);transition:transform .2s}
 .pin.sel .dot{transform:scale(1.2)}
 .pin.lost .dot{border-color:var(--red)}
 .pin.me .dot{border-color:var(--green)}
-.pin .lbl{margin-top:3px;font-size:12px;font-weight:600;color:#000;background:rgba(255,255,255,.85);padding:1px 7px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.pin .lbl{position:absolute;top:44px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;font-weight:600;color:#000;background:rgba(255,255,255,.85);padding:1px 7px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .here{width:18px;height:18px;border-radius:50%;background:var(--acc);border:3px solid #fff;box-shadow:0 0 0 6px rgba(0,122,255,.25)}
 
 /* floating buttons */
@@ -151,8 +151,8 @@ button{border:0;background:none;cursor:pointer;padding:0}
 <div id="modal" class="hidden"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="config.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="config.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
