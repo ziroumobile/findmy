@@ -38,6 +38,7 @@ button{border:0;background:none;cursor:pointer;padding:0}
 /* map */
 #map{position:fixed;inset:0;background:var(--bg)}
 .leaflet-container{font:inherit}
+@media (prefers-color-scheme:dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.7)}}
 .leaflet-control-attribution{font-size:9px;background:transparent!important;opacity:.6}
 .pin{display:grid;justify-items:center;transform:translate(-50%,-100%);width:max-content;pointer-events:auto}
 .pin .dot{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:21px;

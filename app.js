@@ -85,23 +85,15 @@ $('btnSignUp').onclick = () => authCall('up');
 $('loginForm').onsubmit = (e) => { e.preventDefault(); authCall('in'); };
 
 // ---------- map ----------
-const TILES = {
-  light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-};
+// CARTO's dark_all tiles require an API key; dark mode re-colours the free Voyager tiles with CSS instead.
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 function initMap() {
   if (map) { setTimeout(() => map.invalidateSize(), 50); return; }
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([25.04, 121.56], 12);
   L.control.attribution({ position: 'topleft', prefix: false }).addTo(map);
-  const mq = matchMedia('(prefers-color-scheme: dark)');
-  const setTiles = () => {
-    if (tiles) map.removeLayer(tiles);
-    tiles = L.tileLayer(mq.matches ? TILES.dark : TILES.light, {
-      maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO',
-    }).addTo(map);
-  };
-  setTiles();
-  mq.addEventListener('change', setTiles);
+  tiles = L.tileLayer(TILE_URL, {
+    maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO',
+  }).addTo(map);
   map.on('click', () => { if (selectedId) back(); });
 }
 $('btnLocate').onclick = () => {
