@@ -3,60 +3,151 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Find Mine</title>
+<meta name="theme-color" content="#f2f2f7">
+<title>Find My</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
-:root{--bg:#f2f2f7;--card:#fff;--fg:#111;--mute:#6b7280;--acc:#0a84ff;--bad:#ff3b30;--line:#e5e7eb}
-@media (prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--fg:#f5f5f7;--mute:#9ca3af;--line:#2c2c2e}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 -apple-system,system-ui,"Segoe UI",sans-serif}
-button,input{font:inherit}
+:root{
+  --bg:#f2f2f7; --card:#fff; --fg:#000; --mute:#8e8e93; --acc:#007aff; --green:#34c759; --red:#ff3b30;
+  --line:rgba(60,60,67,.18); --sheet:rgba(249,249,251,.82); --tile:rgba(118,118,128,.12);
+  --tab:56px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#000; --card:#1c1c1e; --fg:#fff; --mute:#8e8e93; --acc:#0a84ff; --green:#30d158; --red:#ff453a;
+  --line:rgba(84,84,88,.55); --sheet:rgba(28,28,30,.82); --tile:rgba(118,118,128,.24);
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+  font:17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","Noto Sans TC",sans-serif}
+button,input{font:inherit;color:inherit}
+button{border:0;background:none;cursor:pointer;padding:0}
 .hidden{display:none!important}
-#login{max-width:340px;margin:12vh auto;padding:0 16px;display:grid;gap:10px}
-#login h1{margin:0 0 6px;font-size:28px}
-input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
-button{padding:11px 14px;border:0;border-radius:10px;background:var(--acc);color:#fff;cursor:pointer}
-button.sec{background:var(--card);color:var(--acc);border:1px solid var(--line)}
-button.bad{background:var(--bad)}
-#msg{color:var(--bad);min-height:1.2em;font-size:13px}
-#app{display:grid;grid-template-rows:1fr auto;height:100dvh}
-#map{width:100%;height:100%;min-height:0}
-#panel{background:var(--card);border-radius:18px 18px 0 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));max-height:48dvh;overflow:auto;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:500}
-.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
-.top b{font-size:17px}
-.dev{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;color:var(--fg);border-bottom:1px solid var(--line);border-radius:0;padding:10px 2px}
-.dev.sel{color:var(--acc)}
-.dev small{color:var(--mute);display:block}
-.tag{font-size:11px;background:var(--acc);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px}
-.tag.lost{background:var(--bad)}
-.actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
-#lostBanner{position:fixed;inset:0;z-index:2000;background:var(--bad);color:#fff;display:grid;place-content:center;text-align:center;padding:24px;gap:12px}
-#lostBanner h2{margin:0;font-size:30px}
-#ringBar{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:1500;background:var(--acc);color:#fff;border-radius:14px;padding:12px;display:flex;justify-content:space-between;align-items:center}
-#ringBar button{background:#fff;color:var(--acc)}
+
+/* login */
+#login{height:100%;display:grid;align-content:center;justify-items:center;gap:12px;padding:24px;text-align:center}
+#login .logo{width:92px;height:92px;border-radius:22px;background:linear-gradient(160deg,#5ac8fa,#007aff);display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,122,255,.35)}
+#login h1{margin:8px 0 0;font-size:34px;font-weight:700}
+#login p{margin:0 0 8px;color:var(--mute)}
+#login form{width:100%;max-width:340px;display:grid;gap:0;background:var(--card);border-radius:14px;overflow:hidden}
+#login input{border:0;background:none;padding:14px 16px;outline:none;width:100%}
+#login input+input{border-top:.5px solid var(--line)}
+.btn{width:100%;max-width:340px;padding:14px;border-radius:14px;background:var(--acc);color:#fff;font-weight:600}
+.btn.sec{background:var(--tile);color:var(--acc)}
+#msg{color:var(--red);min-height:1.3em;font-size:14px;max-width:340px}
+
+/* map */
+#map{position:fixed;inset:0;background:var(--bg)}
+.leaflet-container{font:inherit}
+.leaflet-control-attribution{font-size:9px;background:transparent!important;opacity:.6}
+.pin{display:grid;justify-items:center;transform:translate(-50%,-100%);width:max-content;pointer-events:auto}
+.pin .dot{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:21px;
+  border:3px solid var(--acc);box-shadow:0 3px 10px rgba(0,0,0,.3);transition:transform .2s}
+.pin.sel .dot{transform:scale(1.2)}
+.pin.lost .dot{border-color:var(--red)}
+.pin.me .dot{border-color:var(--green)}
+.pin .lbl{margin-top:3px;font-size:12px;font-weight:600;color:#000;background:rgba(255,255,255,.85);padding:1px 7px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.here{width:18px;height:18px;border-radius:50%;background:var(--acc);border:3px solid #fff;box-shadow:0 0 0 6px rgba(0,122,255,.25)}
+
+/* floating buttons */
+#fab{position:fixed;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:600;display:grid;
+  background:var(--sheet);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.2);overflow:hidden}
+#fab button{width:44px;height:44px;display:grid;place-items:center;color:var(--acc)}
+#fab button+button{border-top:.5px solid var(--line)}
+
+/* bottom sheet */
+#sheet{position:fixed;left:0;right:0;bottom:calc(var(--tab) + env(safe-area-inset-bottom));z-index:700;height:140px;
+  background:var(--sheet);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);
+  border-radius:14px 14px 0 0;box-shadow:0 -2px 18px rgba(0,0,0,.18);display:flex;flex-direction:column;
+  max-width:560px;margin:0 auto}
+#grab{touch-action:none;padding:6px 16px 8px;cursor:grab;flex:none}
+.handle{width:36px;height:5px;border-radius:3px;background:var(--mute);opacity:.5;margin:0 auto 8px}
+#head{display:flex;align-items:center;justify-content:space-between;min-height:34px}
+#head h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.3px}
+#head .back{color:var(--acc);display:flex;align-items:center;gap:2px;font-size:17px}
+#head .plus{width:32px;height:32px;border-radius:50%;background:var(--tile);color:var(--acc);display:grid;place-items:center;font-size:22px;line-height:1}
+#body{overflow:auto;padding:0 16px 16px;flex:1;overscroll-behavior:contain}
+.label{font-size:13px;color:var(--mute);margin:10px 0 6px 2px}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;text-align:left;min-height:56px}
+.row+.row{border-top:.5px solid var(--line)}
+.row .ic{width:38px;height:38px;border-radius:50%;background:var(--tile);display:grid;place-items:center;font-size:20px;flex:none}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .tx small{display:block;color:var(--mute);font-size:14px}
+.row .chev{color:var(--mute);font-size:20px}
+.row.danger{color:var(--red)}
+.row.link{color:var(--acc)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.tile{background:var(--card);border-radius:12px;padding:10px 4px 8px;display:grid;justify-items:center;gap:4px;color:var(--acc);font-size:13px;font-weight:500}
+.tile span:first-child{font-size:24px}
+.tile.off{opacity:.4;pointer-events:none}
+.big{font-size:24px;font-weight:700;margin:2px 0}
+.stat{color:var(--mute);font-size:15px}
+.stat b{color:var(--fg);font-weight:600}
+.pill{display:inline-block;font-size:12px;font-weight:600;color:#fff;background:var(--red);border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.pill.me{background:var(--green)}
+.notice{background:var(--card);border-radius:12px;padding:14px;color:var(--mute);font-size:15px}
+.notice b{color:var(--red)}
+
+/* tab bar */
+#tabs{position:fixed;left:0;right:0;bottom:0;z-index:800;height:calc(var(--tab) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);
+  display:flex;background:var(--sheet);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border-top:.5px solid var(--line)}
+#tabs button{flex:1;display:grid;justify-items:center;align-content:center;gap:2px;color:var(--mute);font-size:10px;font-weight:500}
+#tabs button.on{color:var(--acc)}
+
+/* overlays */
+#lostBanner{position:fixed;inset:0;z-index:3000;background:var(--red);color:#fff;display:grid;place-content:center;text-align:center;padding:28px;gap:14px}
+#lostBanner h2{margin:0;font-size:32px}
+#ringBar{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top));z-index:2500;background:var(--sheet);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+  border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.25);font-weight:600}
+#ringBar button{background:var(--acc);color:#fff;border-radius:10px;padding:7px 16px}
+#modal{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.4);display:grid;place-items:center;padding:24px}
+#modal .box{width:100%;max-width:300px;background:var(--card);border-radius:16px;overflow:hidden;text-align:center}
+#modal .in{padding:18px 16px 12px}
+#modal h3{margin:0 0 4px;font-size:17px}
+#modal p{margin:0 0 10px;font-size:13px;color:var(--mute)}
+#modal input{width:100%;padding:8px 10px;border-radius:8px;border:.5px solid var(--line);background:var(--bg);outline:none}
+#modal .bt{display:flex;border-top:.5px solid var(--line)}
+#modal .bt button{flex:1;padding:12px;color:var(--acc)}
+#modal .bt button+button{border-left:.5px solid var(--line);font-weight:600}
+#modal .bt .danger{color:var(--red)}
 </style>
 </head>
 <body>
 <div id="login" class="hidden">
-  <h1>Find Mine</h1>
-  <input id="email" type="email" placeholder="Email" autocomplete="email">
-  <input id="password" type="password" placeholder="Password (min 6)" autocomplete="current-password">
-  <button id="btnSignIn">登入</button>
-  <button id="btnSignUp" class="sec">註冊</button>
+  <div class="logo">
+    <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg>
+  </div>
+  <h1>Find My</h1>
+  <p>登入以尋找你的裝置</p>
+  <form id="loginForm">
+    <input id="email" type="email" placeholder="Email" autocomplete="email" required>
+    <input id="password" type="password" placeholder="密碼" autocomplete="current-password" required minlength="6">
+  </form>
+  <button class="btn" id="btnSignIn">登入</button>
+  <button class="btn sec" id="btnSignUp">建立帳號</button>
   <div id="msg"></div>
 </div>
 
 <div id="app" class="hidden">
   <div id="map"></div>
-  <div id="panel">
-    <div class="top"><b>我的裝置</b><span><button id="btnAdd" class="sec">＋ 註冊此裝置</button> <button id="btnOut" class="sec">登出</button></span></div>
-    <div id="list"></div>
-    <div id="detail"></div>
+  <div id="fab">
+    <button id="btnLocate" aria-label="我的位置"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></button>
   </div>
+  <div id="sheet">
+    <div id="grab"><div class="handle"></div><div id="head"></div></div>
+    <div id="body"></div>
+  </div>
+  <nav id="tabs">
+    <button data-tab="devices" class="on"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="10" rx="1.5"/><path d="M1.5 18.5h16"/><rect x="17" y="9" width="5" height="9" rx="1.2"/></svg>裝置</button>
+    <button data-tab="me"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.2 4-6 8-6s7 1.8 8 6"/></svg>我</button>
+  </nav>
 </div>
 
-<div id="ringBar" class="hidden"><span>🔔 正在響鈴</span><button id="btnStopRing">停止</button></div>
+<div id="ringBar" class="hidden"><span>🔔 正在播放聲音</span><button id="btnStopRing">停止</button></div>
 <div id="lostBanner" class="hidden"><h2>此裝置已遺失</h2><div id="lostText"></div></div>
+<div id="modal" class="hidden"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
