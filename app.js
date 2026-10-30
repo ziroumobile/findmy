@@ -85,14 +85,14 @@ $('btnSignUp').onclick = () => authCall('up');
 $('loginForm').onsubmit = (e) => { e.preventDefault(); authCall('in'); };
 
 // ---------- map ----------
-// CARTO's dark_all tiles require an API key; dark mode re-colours the free Voyager tiles with CSS instead.
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// CARTO tiles now require an API key; OSM's public tiles don't. Dark mode re-colours them with CSS.
+const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 function initMap() {
   if (map) { setTimeout(() => map.invalidateSize(), 50); return; }
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([25.04, 121.56], 12);
   L.control.attribution({ position: 'topleft', prefix: false }).addTo(map);
   tiles = L.tileLayer(TILE_URL, {
-    maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO',
+    maxZoom: 19, attribution: '© OpenStreetMap',
   }).addTo(map);
   map.on('click', () => { if (selectedId) back(); });
 }
